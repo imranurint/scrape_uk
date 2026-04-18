@@ -32,6 +32,8 @@ from models.db import Course, CourseDetail, University
 logger = structlog.get_logger(__name__)
 
 
+from scrapy.utils.defer import deferred_from_coro
+
 class DatabasePipeline:
     """
     Stage 4: Upsert course + university data to PostgreSQL.
@@ -47,32 +49,37 @@ class DatabasePipeline:
         self._saved = 0
         self._errors = 0
 
-    def process_item(self, item: dict, spider: Spider) -> dict:
+    async def process_item(self, item: dict, spider: Spider) -> dict:
         self._batch.append(item)
         if len(self._batch) >= self.BATCH_SIZE:
-            self._flush(spider)
+            await self._flush(spider)
         return item
 
-    def close_spider(self, spider: Spider) -> None:
+    def close_spider(self, spider: Spider):
         if self._batch:
-            self._flush(spider)
-        logger.info(
-            "db_pipeline_done",
-            spider=spider.name,
-            saved=self._saved,
-            errors=self._errors,
-        )
+            d = deferred_from_coro(self._flush(spider))
+            def _log(_):
+                logger.info(
+                    "db_pipeline_done",
+                    spider=spider.name,
+                    saved=self._saved,
+                    errors=self._errors,
+                )
+            d.addCallback(_log)
+            return d
+        else:
+            logger.info(
+                "db_pipeline_done",
+                spider=spider.name,
+                saved=self._saved,
+                errors=self._errors,
+            )
 
-    def _flush(self, spider: Spider) -> None:
+    async def _flush(self, spider: Spider) -> None:
         batch = list(self._batch)
         self._batch.clear()
         try:
-            asyncio.run(self._save_batch(batch))
-            self._saved += len(batch)
-        except RuntimeError:
-            # Already inside an event loop — use current loop
-            loop = asyncio.get_event_loop()
-            loop.run_until_complete(self._save_batch(batch))
+            await self._save_batch(batch)
             self._saved += len(batch)
         except Exception as exc:
             self._errors += len(batch)

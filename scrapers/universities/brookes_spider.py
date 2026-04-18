@@ -8,6 +8,8 @@ URL: https://www.brookes.ac.uk/courses/undergraduate/
 from scrapers.base_spider import BaseUniversitySpider
 
 
+from scrapy_playwright.page import PageMethod
+
 class BrookesSpider(BaseUniversitySpider):
     name = "brookes"
     university_name = "Oxford Brookes University"
@@ -35,7 +37,11 @@ class BrookesSpider(BaseUniversitySpider):
         self.logger.info(f"[Oxford Brookes] Found {len(links)} links on {response.url}")
 
         for href in links:
-            yield self._make_request(response.urljoin(href), callback=self.parse_course)
+            req = self._make_request(response.urljoin(href), callback=self.parse_course)
+            req.meta["playwright_page_methods"] = [
+                PageMethod("wait_for_load_state", "networkidle"),
+            ]
+            yield req
 
         yield from self._follow_pagination(response, callback=self.parse_course_list)
 
