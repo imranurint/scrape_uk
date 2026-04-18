@@ -44,6 +44,7 @@ class MalvernHouseSpider(BaseUniversitySpider):
     def start_requests(self):
         for url in self.start_urls:
             req = self._make_request(url, callback=self.parse_course_list, use_js=True)
+            req.meta["playwright_context"] = "default"
             req.meta["playwright_page_methods"] = [
                 PageMethod("wait_for_function", "document.title !== 'Just a moment...'"),
                 PageMethod("wait_for_selector", "footer", timeout=30000),
@@ -55,11 +56,12 @@ class MalvernHouseSpider(BaseUniversitySpider):
         # Add basic links that contain "course" but are not media
         valid_links = [l for l in links if "course" in l and not l.endswith(".jpg")]
         self.logger.info(f"[Malvern House] Found {len(valid_links)} links on {response.url}")
-
+        
         for href in set(valid_links):
             if "our-courses" not in href:
                 continue
             req = self._make_request(response.urljoin(href), callback=self.parse_course, use_js=True)
+            req.meta["playwright_context"] = "default"
             req.meta["playwright_page_methods"] = [
                 PageMethod("wait_for_function", "document.title !== 'Just a moment...'"),
                 PageMethod("wait_for_selector", "footer", timeout=30000),
