@@ -31,7 +31,7 @@ class NormalisationPipeline:
     essentially zero-cost — just a dict key check.
     """
 
-    def process_item(self, item: dict, spider: Spider) -> dict:
+    async def process_item(self, item: dict, spider: Spider) -> dict:
         if not item.pop("_needs_ai", False):
             # Clean up temp keys and pass through
             item.pop("_raw_description", None)
@@ -41,15 +41,7 @@ class NormalisationPipeline:
         url = item.get("metadata", {}).get("url", "")
         logger.info("ai_fallback_triggered", url=url)
 
-        # Run async AI extraction in a synchronous Scrapy pipeline
-        # (Scrapy pipelines run in a thread pool, so asyncio.run() is safe here)
-        try:
-            ai_data = asyncio.run(_ai_extractor.extract(url))
-        except RuntimeError:
-            # If already inside an event loop (e.g. in tests), use get_event_loop
-            loop = asyncio.get_event_loop()
-            ai_data = loop.run_until_complete(_ai_extractor.extract(url))
-
+        ai_data = await _ai_extractor.extract(url)
         if ai_data:
             self._merge_ai_data(item, ai_data)
 
