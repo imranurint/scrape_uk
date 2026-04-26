@@ -58,8 +58,8 @@ class MMUSpider(BaseUniversitySpider):
                 "playwright": True,
                 "playwright_include_page": False,
                 "playwright_page_methods": [
-                    # Use a very long timeout for the initial challenge.
-                    PageMethod("wait_for_timeout", 20000),
+                    # Wait for a basic element that Cloudflare shouldn't block.
+                    PageMethod("wait_for_timeout", 15000),
                 ],
             },
         )
