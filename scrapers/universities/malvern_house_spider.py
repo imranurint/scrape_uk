@@ -10,9 +10,11 @@ spider uses the WordPress REST API to discover the course pages underneath
 
 from __future__ import annotations
 
+import json
 from urllib.parse import urlencode
 
 from scrapy import Request
+from scrapy_playwright.page import PageMethod
 
 from scrapers.base_spider import BaseUniversitySpider
 
@@ -46,11 +48,19 @@ class MalvernHouseSpider(BaseUniversitySpider):
     start_urls = ["https://malvernhouse.com/our-courses/"]
 
     def start_requests(self):
-        yield Request(
-            url=self._build_api_url(),
-            callback=self.parse_api_courses,
-            errback=self._errback,
-        )
+        for url in self.start_urls:
+            yield Request(
+                url=url,
+                callback=self.parse_api_courses,
+                errback=self._errback,
+                meta={
+                    "playwright": True,
+                    "playwright_include_page": True,
+                    "playwright_page_methods": [
+                        PageMethod("wait_for_timeout", 1500),
+                    ],
+                },
+            )
 
     def _build_api_url(self) -> str:
         params = {
@@ -62,12 +72,32 @@ class MalvernHouseSpider(BaseUniversitySpider):
         }
         return f"{self.api_url}?{urlencode(params)}"
 
-    def parse_api_courses(self, response):
+    async def parse_api_courses(self, response):
+        page = response.meta.get("playwright_page")
         try:
-            pages = response.json()
+            pages = await page.evaluate(
+                """async ({ apiUrl, parentPageId }) => {
+                    const url = new URL(apiUrl);
+                    url.searchParams.set('parent', String(parentPageId));
+                    url.searchParams.set('per_page', '100');
+                    url.searchParams.set('orderby', 'menu_order');
+                    url.searchParams.set('order', 'asc');
+                    url.searchParams.set('status', 'publish');
+
+                    const res = await fetch(url.toString(), { credentials: 'include' });
+                    if (!res.ok) {
+                        throw new Error(`HTTP ${res.status}`);
+                    }
+                    return await res.json();
+                }""",
+                {"apiUrl": self.api_url, "parentPageId": self.parent_page_id},
+            )
         except Exception as exc:
-            self.logger.error("[Malvern House] Failed to parse WP API response", error=str(exc), url=response.url)
+            self.logger.error("[Malvern House] Failed to fetch WP API from browser", error=str(exc), url=response.url)
             return
+        finally:
+            if page:
+                await page.close()
 
         if not isinstance(pages, list):
             self.logger.error("[Malvern House] Unexpected WP API payload", url=response.url)
@@ -75,6 +105,7 @@ class MalvernHouseSpider(BaseUniversitySpider):
 
         self.logger.info(f"[Malvern House] API returned {len(pages)} child pages")
 
+        requests = []
         for page in pages:
             url = page.get("link") or ""
             if not url:
@@ -83,7 +114,9 @@ class MalvernHouseSpider(BaseUniversitySpider):
                 continue
             if "/our-courses/" not in url:
                 continue
-            yield self._make_request(url, callback=self.parse_course, use_js=True)
+            requests.append(self._make_request(url, callback=self.parse_course, use_js=True))
+
+        return requests
 
     def parse_course(self, response):
         item = self._extract_and_normalise(response)
