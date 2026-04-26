@@ -68,7 +68,7 @@ class MiddlesexSpider(BaseUniversitySpider):
             if abs_url in seen:
                 continue
             seen.add(abs_url)
-            yield self._make_request(abs_url, callback=self.parse_course)
+            yield self._make_request(abs_url, callback=self.parse_course, use_js=False)
 
     def parse_course(self, response):
         item = self._extract_and_normalise(response)
