@@ -20,5 +20,4 @@ richmond
                  roehampton
 royal_holloway_isc
                 sheffield_hallam
-                solent
 st_georges
