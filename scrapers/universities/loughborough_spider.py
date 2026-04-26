@@ -26,7 +26,19 @@ class LoughboroughSpider(BaseUniversitySpider):
         self.logger.info(f"[Loughborough] Found {len(links)} links on {response.url}")
 
         for href in links:
-            yield self._make_request(response.urljoin(href), callback=self.parse_course)
+            # Skip non-crawlable links like tel: and mailto:
+            if href.startswith(("tel:", "mailto:", "javascript:")):
+                continue
+
+            url = response.urljoin(href)
+
+            # Keep only real undergraduate course pages for this spider.
+            if "/study/undergraduate/courses/" not in url:
+                continue
+            if url.rstrip("/") == response.url.rstrip("/"):
+                continue
+
+            yield self._make_request(url, callback=self.parse_course)
 
     def parse_course(self, response):
         item = self._extract_and_normalise(response)

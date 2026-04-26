@@ -97,6 +97,7 @@ class Course(Base):
 
     # Full-text search vector (populated by DB trigger in migration - disabled for SQLite)
     search_vector: Mapped[str | None] = mapped_column(String)
+    raw_json: Mapped[str | None] = mapped_column(Text)   # Full JSON blob of the scraped item
 
     university: Mapped["University"] = relationship(back_populates="courses")
     details: Mapped["CourseDetail | None"] = relationship(

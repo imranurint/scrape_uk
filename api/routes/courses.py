@@ -20,6 +20,7 @@ Query params for /courses/search:
 
 from __future__ import annotations
 
+import json
 from typing import Optional
 from uuid import UUID
 
@@ -153,7 +154,24 @@ def _course_to_schema(c: Course) -> CourseSchema:
     )
     from datetime import timezone
 
-    study_modes = (c.study_mode or "full-time").split(",")
+    raw = {}
+    if c.raw_json:
+        try:
+            raw = json.loads(c.raw_json)
+        except Exception:
+            raw = {}
+
+    raw_course = raw.get("course", {}) if isinstance(raw, dict) else {}
+    raw_fees = raw.get("fees", {}) if isinstance(raw, dict) else {}
+    raw_admission = raw.get("admission", {}) if isinstance(raw, dict) else {}
+    raw_metadata = raw.get("metadata", {}) if isinstance(raw, dict) else {}
+
+    study_mode_value = c.study_mode or raw_course.get("study_mode") or "full-time"
+    study_modes = (
+        study_mode_value
+        if isinstance(study_mode_value, list)
+        else str(study_mode_value).split(",")
+    )
 
     return CourseSchema(
         university=UniversitySchema(
@@ -161,30 +179,40 @@ def _course_to_schema(c: Course) -> CourseSchema:
             location=c.university.location if c.university else None,
         ),
         course=CourseInfoSchema(
-            name=c.name,
-            degree=c.degree,
-            level=c.level,
-            department=c.department,
+            name=c.name or raw_course.get("name") or "",
+            degree=c.degree or raw_course.get("degree"),
+            level=c.level or raw_course.get("level"),
+            department=c.department or raw_course.get("department"),
             study_mode=study_modes,
-            duration_years=float(c.duration_years) if c.duration_years else None,
-            start_month=c.start_month,
+            duration_years=float(c.duration_years) if c.duration_years else raw_course.get("duration_years"),
+            start_month=c.start_month or raw_course.get("start_month"),
         ),
         fees=FeesSchema(
-            uk=FeeDetailSchema(yearly=c.fee_uk_yearly, sandwich_year=c.fee_uk_sandwich),
-            international=FeeDetailSchema(yearly=c.fee_intl_yearly, sandwich_year=c.fee_intl_sandwich),
+            uk=FeeDetailSchema(
+                yearly=c.fee_uk_yearly or raw_fees.get("uk", {}).get("yearly"),
+                sandwich_year=c.fee_uk_sandwich or raw_fees.get("uk", {}).get("sandwich_year"),
+            ),
+            international=FeeDetailSchema(
+                yearly=c.fee_intl_yearly or raw_fees.get("international", {}).get("yearly"),
+                sandwich_year=c.fee_intl_sandwich or raw_fees.get("international", {}).get("sandwich_year"),
+            ),
         ),
         admission=AdmissionSchema(
-            ucas_code=c.ucas_code,
+            ucas_code=c.ucas_code or raw_admission.get("ucas_code"),
             application_deadline=ApplicationDeadlineSchema(
-                main=c.deadline_main, late=c.deadline_late
+                main=c.deadline_main or raw_admission.get("application_deadline", {}).get("main"),
+                late=c.deadline_late or raw_admission.get("application_deadline", {}).get("late"),
             ),
-            entry_requirements=c.details.entry_requirements if c.details else None,
+            entry_requirements=(c.details.entry_requirements if c.details else None)
+            or raw_admission.get("entry_requirements"),
             english_requirement=EnglishRequirementSchema(
-                ielts=float(c.ielts_score) if c.ielts_score else None
+                ielts=(float(c.ielts_score) if c.ielts_score else None)
+                or raw_admission.get("english_requirement", {}).get("ielts")
             ),
         ),
         metadata=MetadataSchema(
             url=c.source_url,
-            scraped_at=c.scraped_at.isoformat() if c.scraped_at else "",
+            scraped_at=(c.scraped_at.isoformat() if c.scraped_at else "")
+            or raw_metadata.get("scraped_at", ""),
         ),
     )

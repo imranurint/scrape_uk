@@ -17,13 +17,13 @@ asyncio.run() in a thread-safe way to do async DB ops.
 
 from __future__ import annotations
 
-import asyncio
+import json
 import uuid
 from datetime import datetime, timezone
 
 import structlog
 from scrapy import Spider
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
 from config.database import AsyncSessionLocal
@@ -48,6 +48,7 @@ class DatabasePipeline:
         self._batch: list[dict] = []
         self._saved = 0
         self._errors = 0
+        self._schema_checked = False
 
     async def process_item(self, item: dict, spider: Spider) -> dict:
         self._batch.append(item)
@@ -88,6 +89,8 @@ class DatabasePipeline:
     async def _save_batch(self, items: list[dict]) -> None:
         async with AsyncSessionLocal() as session:
             async with session.begin():
+                if not self._schema_checked:
+                    await self._ensure_compat_schema(session)
                 for item in items:
                     try:
                         await self._upsert_item(session, item)
@@ -97,6 +100,29 @@ class DatabasePipeline:
                             url=item.get("metadata", {}).get("url"),
                             error=str(exc),
                         )
+
+    async def _ensure_compat_schema(self, session) -> None:
+        """
+        Ensure older SQLite databases remain compatible with current code.
+        Adds newly introduced columns if they are missing.
+        """
+        bind = session.get_bind()
+        if not bind or bind.dialect.name != "sqlite":
+            self._schema_checked = True
+            return
+
+        result = await session.execute(text("PRAGMA table_info(courses)"))
+        existing_columns = {row[1] for row in result.fetchall()}
+
+        if "raw_json" not in existing_columns:
+            await session.execute(text("ALTER TABLE courses ADD COLUMN raw_json TEXT"))
+            logger.info("db_schema_column_added", table="courses", column="raw_json")
+
+        if "updated_at" not in existing_columns:
+            await session.execute(text("ALTER TABLE courses ADD COLUMN updated_at DATETIME"))
+            logger.info("db_schema_column_added", table="courses", column="updated_at")
+
+        self._schema_checked = True
 
     async def _upsert_item(self, session, item: dict) -> None:
         uni_data = item.get("university", {})
@@ -152,6 +178,7 @@ class DatabasePipeline:
                 ielts_score=admission.get("english_requirement", {}).get("ielts"),
                 source_url=metadata.get("url", ""),
                 scraped_at=scraped_at,
+                raw_json=json.dumps(item),
             )
             .on_conflict_do_update(
                 index_elements=["source_url"],
@@ -173,6 +200,7 @@ class DatabasePipeline:
                     "ielts_score": admission.get("english_requirement", {}).get("ielts"),
                     "scraped_at": scraped_at,
                     "updated_at": scraped_at,
+                    "raw_json": json.dumps(item),
                 },
             )
             .returning(Course.id)
