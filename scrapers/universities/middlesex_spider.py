@@ -12,15 +12,16 @@ class MiddlesexSpider(BaseUniversitySpider):
     name = "middlesex"
     university_name = "Middlesex University"
     university_location = "London, England"
-    needs_js = False
+    needs_js = True
+    wait_for_selector = "main a[href*='/courses/']"
 
     start_urls = [
         "https://www.mdx.ac.uk/courses",
     ]
 
-    # Middlesex uses a search interface; we'll target the undergraduate listing
-    course_link_selector = "a.link-overlay"
-    next_page_selector   = "a.pagination__next"
+    # Course list is rendered client-side.
+    course_link_selector = "main a[href*='/courses/']"
+    next_page_selector = ""
 
     custom_settings = {
         "CONCURRENT_REQUESTS_PER_DOMAIN": 2,
@@ -29,25 +30,45 @@ class MiddlesexSpider(BaseUniversitySpider):
 
     def parse_course_list(self, response):
         """
-        Middlesex lists courses in cards. 
-        Each card has a link or an overlay link.
+        Middlesex renders course cards via JS. Pull all rendered course-like links
+        and filter out listing/filter URLs.
         """
-        # Broad selector to capture links in the course result area
-        links = response.css(
-            "div.course-card a::attr(href), "
-            "a.course-card__link::attr(href), "
-            "a.link-overlay::attr(href)"
-        ).getall()
+        links = response.css("main a[href*='/courses/']::attr(href)").getall()
 
         self.logger.info(f"[Middlesex] Found {len(links)} links on {response.url}")
 
+        seen = set()
         for href in links:
-            # Ensure we only follow undergraduate paths if that's the focus
-            if "/undergraduate/" in href or "/courses/" in href:
-                yield self._make_request(response.urljoin(href), callback=self.parse_course)
+            if not href:
+                continue
+            if href.startswith(("mailto:", "tel:", "javascript:", "#")):
+                continue
 
-        # Follow pagination
-        yield from self._follow_pagination(response, callback=self.parse_course_list)
+            abs_url = response.urljoin(href)
+            if "/courses/" not in abs_url:
+                continue
+            if abs_url.rstrip("/") == response.url.rstrip("/"):
+                continue
+            if "?" in abs_url or "#" in abs_url:
+                continue
+
+            # Keep only likely course detail pages.
+            if not any(
+                token in abs_url
+                for token in (
+                    "/courses/undergraduate/",
+                    "/courses/postgraduate/",
+                    "/courses/short-courses-and-cpd/",
+                    "/courses/foundation/",
+                    "/courses/research-degrees/",
+                )
+            ):
+                continue
+
+            if abs_url in seen:
+                continue
+            seen.add(abs_url)
+            yield self._make_request(abs_url, callback=self.parse_course)
 
     def parse_course(self, response):
         item = self._extract_and_normalise(response)
