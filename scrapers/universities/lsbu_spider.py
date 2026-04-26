@@ -13,7 +13,6 @@ class LSBUSpider(BaseUniversitySpider):
     university_name = "London South Bank University"
     university_location = "London, England"
     needs_js = True
-    wait_for_selector = "a[href*='/study/course-finder/']"
 
     start_urls = [
         "https://www.lsbu.ac.uk/study/course-finder?num_ranks=20&query=&collection=lsbu-meta",
@@ -24,6 +23,11 @@ class LSBUSpider(BaseUniversitySpider):
 
     def parse_course_list(self, response):
         links = response.css(f"{self.course_link_selector}::attr(href)").getall()
+        if not links:
+            # Fallback selectors for markup variations.
+            links = response.css("a[href*='/study/course-finder/']::attr(href)").getall()
+        if not links:
+            links = response.css("a[href*='/study/courses/']::attr(href)").getall()
         self.logger.info(f"[LSBU] Found {len(links)} links on {response.url}")
 
         for href in links:
