@@ -75,6 +75,14 @@ class MalvernHouseSpider(BaseUniversitySpider):
     async def parse_api_courses(self, response):
         page = response.meta.get("playwright_page")
         try:
+            await page.evaluate(
+                """() => {
+                    const accept = document.querySelector('button.cmplz-accept');
+                    if (accept) accept.click();
+                }"""
+            )
+            await page.wait_for_timeout(1000)
+
             pages = await page.evaluate(
                 """async ({ apiUrl, parentPageId }) => {
                     const url = new URL(apiUrl);
@@ -93,7 +101,7 @@ class MalvernHouseSpider(BaseUniversitySpider):
                 {"apiUrl": self.api_url, "parentPageId": self.parent_page_id},
             )
         except Exception as exc:
-            self.logger.error("[Malvern House] Failed to fetch WP API from browser", error=str(exc), url=response.url)
+            self.logger.error(f"[Malvern House] Failed to fetch WP API from browser: {exc} url={response.url}")
             return
         finally:
             if page:
