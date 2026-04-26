@@ -3,6 +3,16 @@ loughbborough
 lsbu
 malvern
 middlesex
-
+         mmu
 navitas
 northeastern
+northumbria
+norwich
+ntu
+oieg
+              qa
+qub
+ravensbourne
+              regent_college
+              regents_uni
+rgu
