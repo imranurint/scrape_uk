@@ -6,13 +6,15 @@ URL: https://www.lsbu.ac.uk/study/course-finder
 """
 
 from scrapers.base_spider import BaseUniversitySpider
+from scrapy.http import Request
+from scrapy_playwright.page import PageMethod
 
 
 class LSBUSpider(BaseUniversitySpider):
     name = "lsbu"
     university_name = "London South Bank University"
     university_location = "London, England"
-    needs_js = True
+    needs_js = False
 
     start_urls = [
         "https://www.lsbu.ac.uk/study/course-finder?num_ranks=20&query=&collection=lsbu-meta",
@@ -20,6 +22,30 @@ class LSBUSpider(BaseUniversitySpider):
 
     course_link_selector = ".course-finder-results h2 a"
     next_page_selector   = "a.next"
+
+    def start_requests(self):
+        for url in self.start_urls:
+            # LSBU finder is JS-driven and often blocked behind consent state.
+            # Accept cookies if the banner exists, then wait for network idle.
+            yield Request(
+                url=url,
+                callback=self.parse_course_list,
+                errback=self._errback,
+                meta={
+                    "playwright": True,
+                    "playwright_include_page": False,
+                    "playwright_page_methods": [
+                        PageMethod(
+                            "evaluate",
+                            """() => {
+                                const btn = document.querySelector('#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll');
+                                if (btn) btn.click();
+                            }""",
+                        ),
+                        PageMethod("wait_for_timeout", 1500),
+                    ],
+                },
+            )
 
     def parse_course_list(self, response):
         links = response.css(f"{self.course_link_selector}::attr(href)").getall()
