@@ -58,8 +58,8 @@ class MMUSpider(BaseUniversitySpider):
                 "playwright": True,
                 "playwright_include_page": False,
                 "playwright_page_methods": [
-                    # Wait for the main content to load, ensuring Cloudflare is cleared.
-                    PageMethod("wait_for_selector", "main#main", timeout=30000),
+                    # Wait for the heading that appears on all A-Z index pages.
+                    PageMethod("wait_for_selector", "h1:has-text('A to Z of courses')", timeout=30000),
                 ],
             },
         )
