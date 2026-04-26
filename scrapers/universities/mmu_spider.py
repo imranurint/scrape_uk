@@ -58,8 +58,8 @@ class MMUSpider(BaseUniversitySpider):
                 "playwright": True,
                 "playwright_include_page": False,
                 "playwright_page_methods": [
-                    # Let Cloudflare challenge complete before parsing.
-                    PageMethod("wait_for_timeout", 12000),
+                    # Wait for the main content to load, ensuring Cloudflare is cleared.
+                    PageMethod("wait_for_selector", "main#main", timeout=30000),
                 ],
             },
         )
