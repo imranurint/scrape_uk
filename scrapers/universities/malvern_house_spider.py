@@ -2,23 +2,29 @@
 scrapers/universities/malvern_house_spider.py
 ───────────────────────────────────
 Spider for Malvern House International.
-URL: https://malvernhouse.com/courses/
 
-NOTE: Uses Playwright to bypass potential Cloudflare human verification.
+Malvern House's front-end cards are not reliably exposed in the DOM, so this
+spider uses the WordPress REST API to discover the course pages underneath
+/our-courses/ and then scrapes those detail pages normally.
 """
+
+from __future__ import annotations
+
+from urllib.parse import urlencode
+
+from scrapy import Request
 
 from scrapers.base_spider import BaseUniversitySpider
 
-
-from scrapy_playwright.page import PageMethod
 
 class MalvernHouseSpider(BaseUniversitySpider):
     name = "malvern_house"
     university_name = "Malvern House International"
     university_location = "London, England"
-    
-    # Enabling Playwright for human verification challenges
     needs_js = True
+
+    api_url = "https://malvernhouse.com/wp-json/wp/v2/pages"
+    parent_page_id = 223
 
     custom_settings = {
         "CONCURRENT_REQUESTS_PER_DOMAIN": 1,
@@ -29,44 +35,55 @@ class MalvernHouseSpider(BaseUniversitySpider):
             "args": [
                 "--disable-blink-features=AutomationControlled",
                 "--no-sandbox",
-                "--disable-dev-shm-usage"
+                "--disable-dev-shm-usage",
             ],
         },
         "PLAYWRIGHT_CONTEXT_ARGS": {
             "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-        }
+        },
     }
 
-    start_urls = [
-        "https://malvernhouse.com/our-courses/",
-    ]
+    start_urls = ["https://malvernhouse.com/our-courses/"]
 
     def start_requests(self):
-        for url in self.start_urls:
-            req = self._make_request(url, callback=self.parse_course_list, use_js=True)
-            req.meta["playwright_context"] = "default"
-            req.meta["playwright_page_methods"] = [
-                PageMethod("wait_for_function", "document.title !== 'Just a moment...'"),
-                PageMethod("wait_for_selector", "footer", timeout=30000),
-            ]
-            yield req
+        yield Request(
+            url=self._build_api_url(),
+            callback=self.parse_api_courses,
+            errback=self._errback,
+        )
 
-    def parse_course_list(self, response):
-        links = response.css(".course-card a::attr(href), h2.entry-title a::attr(href), a::attr(href)").getall()
-        # Add basic links that contain "course" but are not media
-        valid_links = [l for l in links if "course" in l and not l.endswith(".jpg")]
-        self.logger.info(f"[Malvern House] Found {len(valid_links)} links on {response.url}")
-        
-        for href in set(valid_links):
-            if "our-courses" not in href:
+    def _build_api_url(self) -> str:
+        params = {
+            "parent": str(self.parent_page_id),
+            "per_page": "100",
+            "orderby": "menu_order",
+            "order": "asc",
+            "status": "publish",
+        }
+        return f"{self.api_url}?{urlencode(params)}"
+
+    def parse_api_courses(self, response):
+        try:
+            pages = response.json()
+        except Exception as exc:
+            self.logger.error("[Malvern House] Failed to parse WP API response", error=str(exc), url=response.url)
+            return
+
+        if not isinstance(pages, list):
+            self.logger.error("[Malvern House] Unexpected WP API payload", url=response.url)
+            return
+
+        self.logger.info(f"[Malvern House] API returned {len(pages)} child pages")
+
+        for page in pages:
+            url = page.get("link") or ""
+            if not url:
                 continue
-            req = self._make_request(response.urljoin(href), callback=self.parse_course, use_js=True)
-            req.meta["playwright_context"] = "default"
-            req.meta["playwright_page_methods"] = [
-                PageMethod("wait_for_function", "document.title !== 'Just a moment...'"),
-                PageMethod("wait_for_selector", "footer", timeout=30000),
-            ]
-            yield req
+            if not url.startswith("https://malvernhouse.com/"):
+                continue
+            if "/our-courses/" not in url:
+                continue
+            yield self._make_request(url, callback=self.parse_course, use_js=True)
 
     def parse_course(self, response):
         item = self._extract_and_normalise(response)
