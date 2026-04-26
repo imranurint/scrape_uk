@@ -4,3 +4,5 @@ lsbu
 malvern
 middlesex
 
+navitas
+northeastern
