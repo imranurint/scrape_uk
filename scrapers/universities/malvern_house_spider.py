@@ -25,8 +25,10 @@ class MalvernHouseSpider(BaseUniversitySpider):
     university_location = "London, England"
     needs_js = True
 
-    api_url = "https://malvernhouse.com/wp-json/wp/v2/pages"
-    parent_page_id = 223
+    course_urls = [
+        "https://malvernhouse.com/our-courses/teacher-training/",
+        "https://malvernhouse.com/our-courses/year-round-groups/",
+    ]
 
     custom_settings = {
         "CONCURRENT_REQUESTS_PER_DOMAIN": 1,
@@ -48,83 +50,19 @@ class MalvernHouseSpider(BaseUniversitySpider):
     start_urls = ["https://malvernhouse.com/our-courses/"]
 
     def start_requests(self):
-        for url in self.start_urls:
+        for url in self.course_urls:
             yield Request(
                 url=url,
-                callback=self.parse_api_courses,
+                callback=self.parse_course,
                 errback=self._errback,
                 meta={
-                    "playwright": True,
-                    "playwright_include_page": True,
+                        "playwright": True,
+                    "playwright_include_page": False,
                     "playwright_page_methods": [
                         PageMethod("wait_for_timeout", 1500),
                     ],
                 },
             )
-
-    def _build_api_url(self) -> str:
-        params = {
-            "parent": str(self.parent_page_id),
-            "per_page": "100",
-            "orderby": "menu_order",
-            "order": "asc",
-            "status": "publish",
-        }
-        return f"{self.api_url}?{urlencode(params)}"
-
-    async def parse_api_courses(self, response):
-        page = response.meta.get("playwright_page")
-        try:
-            await page.evaluate(
-                """() => {
-                    const accept = document.querySelector('button.cmplz-accept');
-                    if (accept) accept.click();
-                }"""
-            )
-            await page.wait_for_timeout(1000)
-
-            pages = await page.evaluate(
-                """async ({ apiUrl, parentPageId }) => {
-                    const url = new URL(apiUrl);
-                    url.searchParams.set('parent', String(parentPageId));
-                    url.searchParams.set('per_page', '100');
-                    url.searchParams.set('orderby', 'menu_order');
-                    url.searchParams.set('order', 'asc');
-                    url.searchParams.set('status', 'publish');
-
-                    const res = await fetch(url.toString(), { credentials: 'include' });
-                    if (!res.ok) {
-                        throw new Error(`HTTP ${res.status}`);
-                    }
-                    return await res.json();
-                }""",
-                {"apiUrl": self.api_url, "parentPageId": self.parent_page_id},
-            )
-        except Exception as exc:
-            self.logger.error(f"[Malvern House] Failed to fetch WP API from browser: {exc} url={response.url}")
-            return
-        finally:
-            if page:
-                await page.close()
-
-        if not isinstance(pages, list):
-            self.logger.error("[Malvern House] Unexpected WP API payload", url=response.url)
-            return
-
-        self.logger.info(f"[Malvern House] API returned {len(pages)} child pages")
-
-        requests = []
-        for page in pages:
-            url = page.get("link") or ""
-            if not url:
-                continue
-            if not url.startswith("https://malvernhouse.com/"):
-                continue
-            if "/our-courses/" not in url:
-                continue
-            requests.append(self._make_request(url, callback=self.parse_course, use_js=True))
-
-        return requests
 
     def parse_course(self, response):
         item = self._extract_and_normalise(response)
