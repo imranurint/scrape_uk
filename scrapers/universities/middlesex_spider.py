@@ -13,7 +13,7 @@ class MiddlesexSpider(BaseUniversitySpider):
     university_name = "Middlesex University"
     university_location = "London, England"
     needs_js = True
-    wait_for_selector = "main a[href*='/courses/']"
+    wait_for_selector = "body"
 
     start_urls = [
         "https://www.mdx.ac.uk/courses",
