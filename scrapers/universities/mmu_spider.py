@@ -58,8 +58,8 @@ class MMUSpider(BaseUniversitySpider):
                 "playwright": True,
                 "playwright_include_page": False,
                 "playwright_page_methods": [
-                    # Wait for the heading that appears on all A-Z index pages.
-                    PageMethod("wait_for_selector", "h1:has-text('A to Z of courses')", timeout=30000),
+                    # Use a very long timeout for the initial challenge.
+                    PageMethod("wait_for_timeout", 20000),
                 ],
             },
         )
