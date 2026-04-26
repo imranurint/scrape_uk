@@ -9,6 +9,9 @@ uses the A-Z undergraduate course pages and follows detail links under
 /study/undergraduate/course/.
 """
 
+from scrapy import Request
+from scrapy_playwright.page import PageMethod
+
 from scrapers.base_spider import BaseUniversitySpider
 
 
@@ -17,8 +20,7 @@ class MMUSpider(BaseUniversitySpider):
     university_name = "Manchester Metropolitan University"
     university_location = "Manchester, England"
 
-    needs_js = True
-    wait_for_selector = "a[href*='/study/undergraduate/course/']"
+    needs_js = False
 
     start_urls = [
         "https://www.mmu.ac.uk/study/undergraduate/courses/A",
@@ -28,6 +30,25 @@ class MMUSpider(BaseUniversitySpider):
         "CONCURRENT_REQUESTS_PER_DOMAIN": 2,
         "DOWNLOAD_DELAY": 2.0,
     }
+
+    def start_requests(self):
+        for url in self.start_urls:
+            yield self._listing_request(url, callback=self.parse_course_list)
+
+    def _listing_request(self, url, callback):
+        return Request(
+            url=url,
+            callback=callback,
+            errback=self._errback,
+            meta={
+                "playwright": True,
+                "playwright_include_page": False,
+                "playwright_page_methods": [
+                    # Let Cloudflare challenge complete before parsing.
+                    PageMethod("wait_for_timeout", 12000),
+                ],
+            },
+        )
 
     def parse_course_list(self, response):
         links = response.css("a[href]::attr(href)").getall()
