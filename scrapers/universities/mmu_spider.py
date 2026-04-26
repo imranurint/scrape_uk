@@ -43,6 +43,8 @@ class MMUSpider(BaseUniversitySpider):
             "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             "viewport": {"width": 1920, "height": 1080},
         },
+        # Cloudflare bypass: Use persistent context to retain cookies/session
+        "PLAYWRIGHT_CONTEXT_TYPE": "persistent",
     }
 
     def start_requests(self):
