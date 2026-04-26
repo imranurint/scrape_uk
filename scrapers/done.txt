@@ -4,7 +4,7 @@ lsbu
 malvern
 middlesex
                 mmu
-navitas
+navitas (not need)
 northeastern
 northumbria
 norwich
@@ -13,8 +13,8 @@ oieg
                qa
 qub
 ravensbourne
-                regent_college
-                regents_uni
+                regent_college(need )
+                regents_uni (need)
 rgu
 richmond
                  roehampton
