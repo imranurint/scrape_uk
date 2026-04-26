@@ -27,7 +27,6 @@ class MalvernHouseSpider(BaseUniversitySpider):
 
     course_urls = [
         "https://malvernhouse.com/our-courses/teacher-training/",
-        "https://malvernhouse.com/our-courses/year-round-groups/",
     ]
 
     custom_settings = {
