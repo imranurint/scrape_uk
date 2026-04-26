@@ -12,7 +12,8 @@ class LSBUSpider(BaseUniversitySpider):
     name = "lsbu"
     university_name = "London South Bank University"
     university_location = "London, England"
-    needs_js = False
+    needs_js = True
+    wait_for_selector = "a[href*='/study/course-finder/']"
 
     start_urls = [
         "https://www.lsbu.ac.uk/study/course-finder?num_ranks=20&query=&collection=lsbu-meta",
@@ -26,7 +27,18 @@ class LSBUSpider(BaseUniversitySpider):
         self.logger.info(f"[LSBU] Found {len(links)} links on {response.url}")
 
         for href in links:
-            yield self._make_request(response.urljoin(href), callback=self.parse_course)
+            if href.startswith(("tel:", "mailto:", "javascript:")):
+                continue
+
+            url = response.urljoin(href)
+            if "/study/course-finder/" not in url:
+                continue
+            if "/study/course-finder?" in url:
+                continue
+            if url.rstrip("/") == response.url.rstrip("/"):
+                continue
+
+            yield self._make_request(url, callback=self.parse_course)
 
         yield from self._follow_pagination(response, callback=self.parse_course_list)
 

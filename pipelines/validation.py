@@ -43,5 +43,54 @@ class ValidationPipeline:
         if len(name) < 3:
             raise DropItem(f"[{spider.name}] Course name too short: {name!r}")
 
+        # ── Drop obvious non-course pages globally ────────────────────────────
+        if self._is_non_course(name=name, url=url):
+            raise DropItem(f"[{spider.name}] Non-course page detected — {url}")
+
         logger.debug("validation_passed", name=name, url=url)
         return item
+
+    @staticmethod
+    def _is_non_course(name: str, url: str) -> bool:
+        """
+        Lightweight guard against generic site pages being saved as courses.
+        """
+        lname = name.lower()
+        lurl = url.lower()
+
+        # Known non-course labels frequently found in nav/footer pages.
+        blocked_name_tokens = {
+            "contact",
+            "contact us",
+            "about",
+            "about us",
+            "privacy",
+            "cookie",
+            "cookies",
+            "terms",
+            "accessibility",
+            "news",
+            "events",
+            "home",
+            "apply",
+            "open day",
+        }
+        if lname in blocked_name_tokens:
+            return True
+
+        # Non-course path segments should not be persisted as course records.
+        blocked_url_tokens = (
+            "/contact",
+            "/about",
+            "/news",
+            "/event",
+            "/events",
+            "/privacy",
+            "/cookie",
+            "/cookies",
+            "/terms",
+            "/accessibility",
+            "/help",
+            "/support",
+        )
+        return any(token in lurl for token in blocked_url_tokens)
