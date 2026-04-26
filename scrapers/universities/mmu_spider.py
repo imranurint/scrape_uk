@@ -70,7 +70,7 @@ class MMUSpider(BaseUniversitySpider):
             if "/study/undergraduate/courses/" in abs_url:
                 suffix = abs_url.rstrip("/").split("/study/undergraduate/courses/")[-1]
                 if len(suffix) == 1 and suffix.isalpha():
-                    yield self._make_request(abs_url, callback=self.parse_course_list, use_js=True)
+                    yield self._listing_request(abs_url, callback=self.parse_course_list)
                 continue
 
             # Course detail pages are stable via normal Scrapy requests.
