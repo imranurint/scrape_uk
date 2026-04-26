@@ -46,6 +46,14 @@ class MMUSpider(BaseUniversitySpider):
     }
 
     def start_requests(self):
+        # Establish cookies/session by visiting the homepage first
+        yield Request(
+            url="https://www.mmu.ac.uk/",
+            callback=self.parse_homepage,
+            meta={"playwright": True, "playwright_include_page": False}
+        )
+
+    def parse_homepage(self, response):
         for url in self.start_urls:
             yield self._listing_request(url, callback=self.parse_course_list)
 
