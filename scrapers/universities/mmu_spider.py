@@ -28,9 +28,9 @@ class MMUSpider(BaseUniversitySpider):
 
     custom_settings = {
         "ROBOTSTXT_OBEY": False,
-        "CONCURRENT_REQUESTS_PER_DOMAIN": 2,
-        "DOWNLOAD_DELAY": 2.0,
-        "USER_AGENT": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "CONCURRENT_REQUESTS_PER_DOMAIN": 1,
+        "DOWNLOAD_DELAY": 3.0,
+        "USER_AGENT": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "PLAYWRIGHT_LAUNCH_OPTIONS": {
             "headless": True,
             "args": [
@@ -40,20 +40,12 @@ class MMUSpider(BaseUniversitySpider):
             ],
         },
         "PLAYWRIGHT_CONTEXT_ARGS": {
-            "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
             "viewport": {"width": 1920, "height": 1080},
         },
     }
 
     def start_requests(self):
-        # Establish cookies/session by visiting the homepage first
-        yield Request(
-            url="https://www.mmu.ac.uk/",
-            callback=self.parse_homepage,
-            meta={"playwright": True, "playwright_include_page": False}
-        )
-
-    def parse_homepage(self, response):
         for url in self.start_urls:
             yield self._listing_request(url, callback=self.parse_course_list)
 
@@ -66,7 +58,6 @@ class MMUSpider(BaseUniversitySpider):
                 "playwright": True,
                 "playwright_include_page": False,
                 "playwright_page_methods": [
-                    # Wait for a basic element that Cloudflare shouldn't block.
                     PageMethod("wait_for_timeout", 15000),
                 ],
             },
