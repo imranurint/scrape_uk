@@ -16,3 +16,24 @@ rgu
 richmond
 royal_holloway_isc
 st_georges
+
+
+London South Bank University
+Loughborough University
+Malvern House International
+Middlesex University
+Northeastern University
+Northumbria University
+Norwich University of the Arts
+Nottingham Trent University
+Oxford International Education Group (OIEG)
+Oxford Brookes University
+Queens University of Belfast
+Ravensbourne (Direct)
+Ravensbourne (OIEG)
+Richmond American University
+Robert Gordon University
+Royal Holloway (Study Group)
+Saint George University
+Regent College London
+Regent University 
