@@ -3,7 +3,6 @@ loughbborough
 lsbu
 malvern
 middlesex
-navitas (not need)
 northeastern
 northumbria
 norwich
@@ -11,7 +10,7 @@ ntu
 oieg
 qub
 ravensbourne
-                regent_college(need )
+regent_college
                 regents_uni (need)
 rgu
 richmond
