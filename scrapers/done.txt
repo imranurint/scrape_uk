@@ -3,21 +3,17 @@ loughbborough
 lsbu
 malvern
 middlesex
-                mmu
 navitas (not need)
 northeastern
 northumbria
 norwich
 ntu
 oieg
-               qa
 qub
 ravensbourne
                 regent_college(need )
                 regents_uni (need)
 rgu
 richmond
-                 roehampton
 royal_holloway_isc
-                sheffield_hallam
 st_georges
