@@ -23,7 +23,7 @@ class RegentsUniSpider(BaseUniversitySpider):
         # Stealth settings
         "PLAYWRIGHT_BROWSER_TYPE": "chromium",
         "PLAYWRIGHT_LAUNCH_OPTIONS": {
-            "headless": True,
+            "headless": False, # Change this to False
             "args": ["--disable-blink-features=AutomationControlled"],
         },
     }
