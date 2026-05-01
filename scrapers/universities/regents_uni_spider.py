@@ -4,29 +4,24 @@ scrapers/universities/regents_uni_spider.py
 Spider for Regent's University London.
 """
 
+from scrapy import Request
 from scrapers.base_spider import BaseUniversitySpider
-from scrapy_playwright.page import PageMethod
-
+# from scrapy_playwright.page import PageMethod # No longer needed if using impersonate
 
 class RegentsUniSpider(BaseUniversitySpider):
     name = "regents_uni"
     university_name = "Regent's University London"
     university_location = "London, England"
     
-    # Enabling Playwright
-    needs_js = True
+    # Disable Playwright if using impersonate
+    needs_js = False 
 
     custom_settings = {
-        "CONCURRENT_REQUESTS": 1,        # Slow down: only 1 request at a time
-        "DOWNLOAD_DELAY": 10,            # Wait 10 seconds between requests
-        "PLAYWRIGHT_MAX_PAGES_PER_CONTEXT": 1,
-        "AUTOTHROTTLE_ENABLED": True,    # Ensure AutoThrottle is on
-        "AUTOTHROTTLE_START_DELAY": 5.0,
-        "PLAYWRIGHT_BROWSER_TYPE": "chromium",
-        "PLAYWRIGHT_LAUNCH_OPTIONS": {
-            "headless": False,           # Keep this False to help bypass checks
-            "args": ["--disable-blink-features=AutomationControlled"],
+        "DOWNLOADER_MIDDLEWARES": {
+            "scrapy_impersonate.ImpersonateMiddleware": 100,
         },
+        "CONCURRENT_REQUESTS": 1,
+        "DOWNLOAD_DELAY": 5,
     }
 
     start_urls = [
@@ -44,45 +39,11 @@ class RegentsUniSpider(BaseUniversitySpider):
                 use_js=True
             )
 
-    def _make_request(self, url, callback, use_js=None, cb_kwargs=None, referer=None):
-        if use_js is None:
-            use_js = self.needs_js
-
-        meta = {
-            "playwright": True,
-            "playwright_include_page": False,
-            "playwright_context_args": {
-                "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-                "locale": "en-GB",
-                "viewport": {"width": 1920, "height": 1080},
-            }
-        } if use_js else {}
-        
-        headers = {} 
-        if referer:
-            headers["Referer"] = referer
-
-        if use_js:
-            if url in self.start_urls:
-                meta["playwright_page_methods"] = [
-                    PageMethod("wait_for_load_state", "networkidle"),
-                    PageMethod("wait_for_timeout", 3000),
-                ]
-            else:
-                meta["playwright_page_methods"] = [
-                    PageMethod("wait_for_load_state", "domcontentloaded"),
-                    PageMethod("wait_for_timeout", 2000),
-                ]
-
-        from scrapy import Request
+    def _make_request(self, url, callback, **kwargs):
         return Request(
             url=url,
             callback=callback,
-            meta=meta,
-            headers=headers,
-            cb_kwargs=cb_kwargs or {},
-            errback=self._errback,
-            dont_filter=True if url in self.start_urls else False
+            meta={"impersonate": "chrome120"}, # This mimics Chrome exactly
         )
 
     def parse_course_list(self, response):
