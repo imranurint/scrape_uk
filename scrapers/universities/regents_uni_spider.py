@@ -17,13 +17,14 @@ class RegentsUniSpider(BaseUniversitySpider):
     needs_js = True
 
     custom_settings = {
-        "CONCURRENT_REQUESTS": 2,
+        "CONCURRENT_REQUESTS": 1,        # Slow down: only 1 request at a time
+        "DOWNLOAD_DELAY": 10,            # Wait 10 seconds between requests
         "PLAYWRIGHT_MAX_PAGES_PER_CONTEXT": 1,
-        "DOWNLOAD_DELAY": 4,
-        # Stealth settings
+        "AUTOTHROTTLE_ENABLED": True,    # Ensure AutoThrottle is on
+        "AUTOTHROTTLE_START_DELAY": 5.0,
         "PLAYWRIGHT_BROWSER_TYPE": "chromium",
         "PLAYWRIGHT_LAUNCH_OPTIONS": {
-            "headless": False, # Change this to False
+            "headless": False,           # Keep this False to help bypass checks
             "args": ["--disable-blink-features=AutomationControlled"],
         },
     }
@@ -57,10 +58,7 @@ class RegentsUniSpider(BaseUniversitySpider):
             }
         } if use_js else {}
         
-        headers = {
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-            "Accept-Language": "en-GB,en;q=0.9",
-        }
+        headers = {} 
         if referer:
             headers["Referer"] = referer
 
