@@ -20,30 +20,40 @@ class BrookesSpider(BaseUniversitySpider):
     wait_for_selector = "a[href*='/s/redirect']"
 
     start_urls = [
-        "https://search.brookes.ac.uk/s/search.html?collection=oxford-brookes~sp-course-finder&f.Study+level%7CcourseLevel=undergraduate&query=",
+        "https://www.brookes.ac.uk/study/courses/undergraduate",
+        "https://www.brookes.ac.uk/study/courses/postgraduate/masters",
     ]
 
-    course_link_selector = "a[href*='/s/redirect']"
-    next_page_selector   = "a.next"
-
-    custom_settings = {
-        "CONCURRENT_REQUESTS_PER_DOMAIN": 2,
-        "DOWNLOAD_DELAY": 3.0,  # Brookes can be sensitive to rate
-        "ROBOTSTXT_OBEY": False,
-    }
+    # Remove search-based approach, use direct course listings
+    course_link_selector = "a[href*='/course/'], a[href*='/courses/']"
 
     def parse_course_list(self, response):
-        links = response.css(f"{self.course_link_selector}::attr(href)").getall()
-        self.logger.info(f"[Oxford Brookes] Found {len(links)} links on {response.url}")
+        """
+        Oxford Brookes parser for undergraduate and postgraduate courses
+        """
+        # Multiple selector strategies for different page types
+        links = response.css(
+            "a[href*='/course/']::attr(href), "
+            "a[href*='/courses/']::attr(href), "
+            "a.course-link::attr(href), "
+            "div.course-item a::attr(href), "
+            "li.course-listing a::attr(href)"
+        ).getall()
 
-        for href in links:
-            req = self._make_request(response.urljoin(href), callback=self.parse_course)
-            req.meta["playwright_page_methods"] = [
-                PageMethod("wait_for_load_state", "networkidle"),
-            ]
-            yield req
+        # Filter for course URLs only
+        course_links = [
+            link for link in links 
+            if '/course/' in link or '/courses/' in link
+        ]
 
-        yield from self._follow_pagination(response, callback=self.parse_course_list)
+        self.logger.info(f"[Brookes] Found {len(course_links)} links on {response.url}")
+
+        seen = set()
+        for href in course_links:
+            abs_url = response.urljoin(href)
+            if abs_url not in seen:
+                seen.add(abs_url)
+                yield self._make_request(abs_url, callback=self.parse_course)
 
     def parse_course(self, response):
         item = self._extract_and_normalise(response)
