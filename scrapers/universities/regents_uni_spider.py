@@ -8,7 +8,6 @@ Uses scrapy-impersonate to bypass Cloudflare/WAF.
 from scrapy import Request
 from scrapers.base_spider import BaseUniversitySpider
 
-
 class RegentsUniSpider(BaseUniversitySpider):
     name = "regents_uni"
     university_name = "Regent's University London"
