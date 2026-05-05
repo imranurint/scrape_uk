@@ -16,37 +16,39 @@ class NTUSpider(BaseUniversitySpider):
 
     start_urls = [
         "https://www.ntu.ac.uk/study-and-courses/undergraduate/course-a-z",
+        "https://www.ntu.ac.uk/study-and-courses/postgraduate/subject-areas",
+        "https://www.ntu.ac.uk/study-and-courses/postgraduate",
     ]
 
-    # NTU listing uses /course/ paths
-    course_link_selector = "a[href*='/course/']"
-    next_page_selector   = "a[href*='result_page=']"
-
-    custom_settings = {
-        "CONCURRENT_REQUESTS_PER_DOMAIN": 2,
-        "DOWNLOAD_DELAY": 2.5,
-    }
+    course_link_selector = "a[href*='/course/'], a[href*='/courses/']"
 
     def parse_course_list(self, response):
         """
-        NTU lists courses with an A-Z pager.
+        NTU parser for undergraduate and postgraduate courses
         """
-        # Find course links within the main list container
+        # Multiple selector strategies for different page types
         links = response.css(
-            "li.course-list__item a::attr(href), "
-            "div.results-list a::attr(href), "
-            "a[href*='/course/']::attr(href)"
+            "a[href*='/course/']::attr(href), "
+            "a[href*='/courses/']::attr(href), "
+            "a.course-link::attr(href), "
+            "div.course-item a::attr(href), "
+            "li.course-listing a::attr(href)"
         ).getall()
 
-        self.logger.info(f"[NTU] Found {len(links)} links on {response.url}")
+        # Filter for course URLs only
+        course_links = [
+            link for link in links 
+            if '/course/' in link or '/courses/' in link
+        ]
 
-        for href in links:
-            # Course URLs usually end with a number or slug
-            if "/course/" in href:
-                yield self._make_request(response.urljoin(href), callback=self.parse_course)
+        self.logger.info(f"[NTU] Found {len(course_links)} links on {response.url}")
 
-        # Follow A-Z pagination
-        yield from self._follow_pagination(response, callback=self.parse_course_list)
+        seen = set()
+        for href in course_links:
+            abs_url = response.urljoin(href)
+            if abs_url not in seen:
+                seen.add(abs_url)
+                yield self._make_request(abs_url, callback=self.parse_course)
 
     def parse_course(self, response):
         item = self._extract_and_normalise(response)

@@ -31,43 +31,43 @@ class QUBSpider(BaseUniversitySpider):
 }
 
     def parse_course_list(self, response):
-    """
-    Updated QUB parser with multiple selector strategies
-    """
-    # Strategy 1: Common course link patterns
-    links = response.css(
-        "a[href*='/courses/undergraduate/']::attr(href), "
-        "a[href*='/courses/postgraduate-taught/']::attr(href), "
-        "a[href*='/courses/postgraduate-research/']::attr(href), "
-        "a.course-link::attr(href), "
-        "a.course-title::attr(href), "
-        "div.course-item a::attr(href), "
-        "div.course-card a::attr(href), "
-        "div.course-listing a::attr(href), "
-        "li.course a::attr(href)"
-    ).getall()
+        """
+        Updated QUB parser with multiple selector strategies
+        """
+        # Strategy 1: Common course link patterns
+        links = response.css(
+            "a[href*='/courses/undergraduate/']::attr(href), "
+            "a[href*='/courses/postgraduate-taught/']::attr(href), "
+            "a[href*='/courses/postgraduate-research/']::attr(href), "
+            "a.course-link::attr(href), "
+            "a.course-title::attr(href), "
+            "div.course-item a::attr(href), "
+            "div.course-card a::attr(href), "
+            "div.course-listing a::attr(href), "
+            "li.course a::attr(href)"
+        ).getall()
 
-    # Strategy 2: URL pattern matching
-    all_links = response.css('a::attr(href)').getall()
-    filtered_links = [
-        link for link in all_links 
-        if '/courses/' in link and (
-            '/undergraduate/' in link or 
-            '/postgraduate-' in link
-        )
-    ]
-    
-    # Combine both strategies
-    all_course_links = list(set(links + filtered_links))
-    
-    self.logger.info(f"[QUB] Found {len(all_course_links)} links on {response.url}")
+        # Strategy 2: URL pattern matching
+        all_links = response.css('a::attr(href)').getall()
+        filtered_links = [
+            link for link in all_links 
+            if '/courses/' in link and (
+                '/undergraduate/' in link or 
+                '/postgraduate-' in link
+            )
+        ]
+        
+        # Combine both strategies
+        all_course_links = list(set(links + filtered_links))
+        
+        self.logger.info(f"[QUB] Found {len(all_course_links)} links on {response.url}")
 
-    seen = set()
-    for href in all_course_links:
-        abs_url = response.urljoin(href)
-        if abs_url not in seen:
-            seen.add(abs_url)
-            yield self._make_request(abs_url, callback=self.parse_course)
+        seen = set()
+        for href in all_course_links:
+            abs_url = response.urljoin(href)
+            if abs_url not in seen:
+                seen.add(abs_url)
+                yield self._make_request(abs_url, callback=self.parse_course)
 
     def parse_course(self, response):
         item = self._extract_and_normalise(response)
