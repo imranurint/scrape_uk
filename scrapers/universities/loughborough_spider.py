@@ -16,30 +16,40 @@ class LoughboroughSpider(BaseUniversitySpider):
 
     start_urls = [
         "https://www.lboro.ac.uk/study/undergraduate/courses/",
+        "https://www.lboro.ac.uk/study/postgraduate/masters-degrees/",
     ]
 
-    course_link_selector = "a.list__link"
-    next_page_selector   = None
+    course_link_selector = "a[href*='/courses/'], a[href*='/masters-'], a.course-link"
 
     def parse_course_list(self, response):
-        links = response.css(f"{self.course_link_selector}::attr(href)").getall()
-        self.logger.info(f"[Loughborough] Found {len(links)} links on {response.url}")
+        """
+        Loughborough parser for undergraduate and postgraduate courses
+        """
+        # Multiple selector strategies for different page types
+        links = response.css(
+            "a[href*='/courses/']::attr(href), "
+            "a[href*='/masters-']::attr(href), "
+            "a.course-link::attr(href), "
+            "div.course-item a::attr(href), "
+            "li.course-listing a::attr(href), "
+            "a.list__link::attr(href)"
+        ).getall()
 
-        for href in links:
-            # Skip non-crawlable links like tel: and mailto:
-            if href.startswith(("tel:", "mailto:", "javascript:")):
-                continue
+        # Filter for course URLs only
+        course_links = [
+            link for link in links 
+            if '/courses/' in link or '/masters-' in link
+        ]
 
-            url = response.urljoin(href)
+        self.logger.info(f"[Loughborough] Found {len(course_links)} links on {response.url}")
 
-            # Keep only real undergraduate course pages for this spider.
-            if "/study/undergraduate/courses/" not in url:
-                continue
-            if url.rstrip("/") == response.url.rstrip("/"):
-                continue
-
-            yield self._make_request(url, callback=self.parse_course)
-
+        seen = set()
+        for href in course_links:
+            abs_url = response.urljoin(href)
+            if abs_url not in seen:
+                seen.add(abs_url)
+                yield self._make_request(abs_url, callback=self.parse_course)
+                
     def parse_course(self, response):
         item = self._extract_and_normalise(response)
         if item:
