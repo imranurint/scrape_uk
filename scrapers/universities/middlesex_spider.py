@@ -17,6 +17,8 @@ class MiddlesexSpider(BaseUniversitySpider):
 
     start_urls = [
         "https://www.mdx.ac.uk/courses",
+        "https://www.mdx.ac.uk/study/undergraduate/",
+        "https://www.mdx.ac.uk/study/postgraduate",
     ]
 
     # Course list is rendered client-side.
