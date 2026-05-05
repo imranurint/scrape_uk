@@ -15,6 +15,7 @@ class BrookesSpider(BaseUniversitySpider):
     university_name = "Oxford Brookes University"
     university_location = "Oxford, England"
     
+    
     # Brookes search requires JS to render results
     needs_js = True
     wait_for_selector = "a[href*='/s/redirect']"
