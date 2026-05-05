@@ -77,7 +77,7 @@ class StGeorgesSpider(BaseUniversitySpider):
             if link.startswith(("tel:", "mailto:", "javascript:", "#")):
                 continue
             
-            # St George's course URL patterns
+            # St George's course URL patterns - updated for actual course structure
             if any(pattern in link for pattern in [
                 '/prospective-students/courses/',
                 '/courses/',
@@ -85,10 +85,20 @@ class StGeorgesSpider(BaseUniversitySpider):
                 '/postgraduate/',
                 '/foundation/',
                 '/short-courses/',
-                '/research/',
                 '/study/',
                 'citystgeorges.ac.uk/courses',
                 'citystgeorges.ac.uk/prospective-students/courses',
+                # Bayes Business School specific patterns
+                'bayes.citystgeorges.ac.uk/study/',
+                'bayes.city.ac.uk/study/',
+                '/study/undergraduate/courses/',
+                '/study/postgraduate/courses/',
+                '/study/masters/courses/',
+                '/study/mba/courses/',
+                '/study/phd/courses/',
+                '/study/executive-education/courses/',
+                # Online Technology specific patterns
+                'technology.online.city.ac.uk/',
                 # Individual course patterns - more specific
                 '/course/',
                 '/programme/',
@@ -136,6 +146,7 @@ class StGeorgesSpider(BaseUniversitySpider):
                 '/economics',
                 '/management',
                 '/marketing',
+                '/actuarial',
                 # Science & Research
                 '/biology',
                 '/chemistry',
