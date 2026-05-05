@@ -16,6 +16,7 @@ class RavensbourneSpider(BaseUniversitySpider):
 
     start_urls = [
         "https://www.ravensbourne.ac.uk/study/undergraduate/undergraduate-courses",
+        "https://www.ravensbourne.ac.uk/study/postgraduate",
     ]
 
     course_link_selector = "a.aspect-ratio-card"
