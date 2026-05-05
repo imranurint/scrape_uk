@@ -9,7 +9,6 @@ Covers: Ravensbourne OIEG, DMU, Dundee, etc.
 
 from scrapers.base_spider import BaseUniversitySpider
 
-
 class OIEGSpider(BaseUniversitySpider):
     name = "oieg"
     university_name = "Oxford International Education Group"
