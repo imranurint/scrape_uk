@@ -16,101 +16,95 @@ class LSBUSpider(BaseUniversitySpider):
     name = "lsbu"
     university_name = "London South Bank University"
     university_location = "London, England"
-    needs_js = False
-
-    api_url = "https://lsbu-search.funnelback.squiz.cloud/s/search.json"
-    page_size = 20
+    
+    # Enable JavaScript for dynamic content
+    needs_js = True
+    
+    # Multiple browser strategies
+    custom_settings = {
+        "CONCURRENT_REQUESTS_PER_DOMAIN": 1,  # Reduce to avoid blocking
+        "DOWNLOAD_DELAY": 8.0,  # Slower for respect
+        "RANDOMIZE_DOWNLOAD_DELAY": True,
+        "USER_AGENT": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "PLAYWRIGHT_BROWSER_TYPE": "chromium",  # Try different browsers
+        "PLAYWRIGHT_LAUNCH_OPTIONS": {
+            "headless": True,
+            "args": ["--disable-blink-features=AutomationControlled"]
+        }
+    }
 
     start_urls = [
-        "https://www.lsbu.ac.uk/study/course-finder?num_ranks=20&query=&collection=lsbu-meta",
+        "https://www.lsbu.ac.uk/study/course-finder",
+        "https://www.lsbu.ac.uk/study/postgraduate/masters-courses",
+        "https://www.lsbu.ac.uk/study/undergraduate",
+        "https://www.lsbu.ac.uk/study/postgraduate",
     ]
 
-    course_link_selector = ".course-finder-results h2 a"
-    next_page_selector   = "a.next"
-
-    def start_requests(self):
-        yield self._make_request(self._build_api_url(start_rank=1), callback=self.parse_api_list)
-
-    def _build_api_url(self, start_rank: int) -> str:
-        params = {
-            "collection": "lsbu~sp-courses-meta",
-            "profile": "_default",
-            "query": "!nullsearch",
-            "start_rank": str(start_rank),
-            "sort": "relevance",
-            "num_ranks": str(self.page_size),
-            "f.Level_new|courseLevel": "undergraduate",
-        }
-        return f"{self.api_url}?{urlencode(params)}"
-
-    def parse_api_list(self, response):
-        try:
-            payload = json.loads(response.text)
-        except json.JSONDecodeError:
-            self.logger.error("[LSBU] API returned non-JSON payload", url=response.url)
-            return
-
-        packet = payload.get("response", {}).get("resultPacket", {})
-        results = packet.get("results", []) or []
-        summary = packet.get("resultsSummary", {}) or {}
-
-        self.logger.info(
-            f"[LSBU] API returned {len(results)} results on {response.url}"
-        )
-
-        for row in results:
-            url = row.get("liveUrl") or row.get("indexUrl") or ""
-            if not url:
-                continue
-            if "/study/course-finder/" not in url:
-                continue
-            if "?" in url:
-                url = url.split("?", 1)[0]
-            yield self._make_request(url, callback=self.parse_course)
-
-        total = int(summary.get("totalMatching", 0) or 0)
-        if not results:
-            return
-
-        query = parse_qs(urlparse(response.url).query)
-        current_start = int(query.get("start_rank", ["1"])[0])
-        next_start = current_start + len(results)
-        if next_start <= total:
-            yield self._make_request(self._build_api_url(start_rank=next_start), callback=self.parse_api_list)
+    course_link_selector = "a[href*='/course/'], a[href*='/courses/']"
 
     def parse_course_list(self, response):
-        links = response.css(f"{self.course_link_selector}::attr(href)").getall()
-        if not links:
-            # Fallback selectors for markup variations.
-            links = response.css("a[href*='/study/course-finder/']::attr(href)").getall()
-        if not links:
-            links = response.css("a[href*='/study/courses/']::attr(href)").getall()
-        if not links:
-            # Some LSBU pages inject result URLs via JS payload rather than anchor tags.
-            links = re.findall(
-                r"(?:https?://www\.lsbu\.ac\.uk)?(/study/course-finder/[a-z0-9\-_/]+)",
-                response.text,
-                flags=re.IGNORECASE,
-            )
-        self.logger.info(f"[LSBU] Found {len(links)} links on {response.url}")
-
-        for href in links:
-            if href.startswith(("tel:", "mailto:", "javascript:")):
+        """
+        LSBU parser for undergraduate and postgraduate courses
+        """
+        self.logger.info(f"[LSBU] Processing {response.url}")
+        
+        # Strategy 1: Extract ALL links first
+        all_links = response.css('a::attr(href)').getall()
+        self.logger.info(f"[LSBU] Total links found: {len(all_links)}")
+        
+        # Strategy 2: Filter for course-related URLs
+        course_links = []
+        for link in all_links:
+            if not link:
                 continue
-
-            url = response.urljoin(href)
-            if "/study/course-finder/" not in url:
+            if link.startswith(("tel:", "mailto:", "javascript:", "#")):
                 continue
-            if "/study/course-finder?" in url:
+            
+            # Multiple LSBU course URL patterns
+            if any(pattern in link for pattern in [
+                '/course/',
+                '/courses/',
+                '/study/course',
+                'course-finder/',
+                'undergraduate/',
+                'postgraduate/',
+                'masters-courses/'
+            ]):
+                course_links.append(link)
+        
+        # Strategy 3: Remove duplicates and navigation
+        final_links = []
+        seen = set()
+        for link in course_links:
+            # Skip navigation/filter links
+            if any(skip in link for skip in [
+                '?query=',
+                '?collection=',
+                '?profile=',
+                '?f.Level',
+                'page=',
+                '#'
+            ]):
                 continue
-            if url.rstrip("/") == response.url.rstrip("/"):
-                continue
-
+            
+            abs_url = response.urljoin(link)
+            if abs_url not in seen:
+                seen.add(abs_url)
+                final_links.append(abs_url)
+        
+        self.logger.info(f"[LSBU] Found {len(final_links)} course links on {response.url}")
+        
+        # Strategy 4: Yield course detail requests
+        for url in final_links:
             yield self._make_request(url, callback=self.parse_course)
 
+        # Follow pagination if present
         yield from self._follow_pagination(response, callback=self.parse_course_list)
 
     def parse_course(self, response):
+        """
+        Extract course details from individual course pages
+        """
         item = self._extract_and_normalise(response)
         if item:
             yield item
