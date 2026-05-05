@@ -1,0 +1,2 @@
+uv run scrapy crawl uk_universities
+uv run python export_all_to_json.py

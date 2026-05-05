@@ -16,6 +16,8 @@ class RichmondSpider(BaseUniversitySpider):
 
     start_urls = [
         "https://www.richmond.ac.uk/undergraduate-programmes/",
+        "https://www.richmond.ac.uk/postgraduate-programmes/",
+        "https://www.richmond.ac.uk/study-abroad/",
     ]
 
     course_link_selector = "a.programme-title"
