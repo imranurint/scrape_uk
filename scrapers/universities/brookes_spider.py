@@ -15,10 +15,10 @@ class BrookesSpider(BaseUniversitySpider):
     university_name = "Oxford Brookes University"
     university_location = "Oxford, England"
     
-    
+
     # Brookes search requires JS to render results
     needs_js = True
-    wait_for_selector = "a[href*='/s/redirect']"
+    # wait_for_selector = "a[href*='/s/redirect']"
 
     start_urls = [
         "https://www.brookes.ac.uk/study/courses/undergraduate",
@@ -27,6 +27,7 @@ class BrookesSpider(BaseUniversitySpider):
 
     # Remove search-based approach, use direct course listings
     course_link_selector = "a[href*='/course/'], a[href*='/courses/']"
+
 
     def parse_course_list(self, response):
         """
