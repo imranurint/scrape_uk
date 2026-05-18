@@ -45,7 +45,7 @@ scrapy crawl <spider_name>
 To view database statistics:
 
 ```bash
-python db_script/query_database.py
+python db_script/data_summary.py
 ```
 
 To export database data to JSON files in the `data/` directory:

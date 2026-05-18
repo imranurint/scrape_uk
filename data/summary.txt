@@ -1,0 +1,29 @@
+🎓 Total Universities: 18
+
+📚 Total Courses: 2322
+
+📊 University Course Counts:
+--------------------------------------------------------------------------------
+University Name                          Location                Courses
+--------------------------------------------------------------------------------
+Northumbria University                   Newcastle, England          502
+Queen's University Belfast               Belfast, Northern Ireland        432
+London South Bank University             London, England             286
+Robert Gordon University                 Aberdeen, Scotland          272
+Loughborough University                  Loughborough, England        128
+Ravensbourne University London           London, England             119
+Regent's University London               London, England              86
+St George's, University of London        London, England              70
+Nottingham Trent University              Nottingham, England          60
+Regent College London                    London, England              38
+Richmond American University London      London, England              30
+Norwich University of the Arts           Norwich, England             29
+Oxford International Education Group     Multiple (UK)                29
+Northeastern University London           London, England              27
+Malvern House International              London, England              25
+Middlesex University                     London, England              21
+Oxford Brookes University                Oxford, England              19
+Royal Holloway ISC (Study Group)         Egham, England               18
+--------------------------------------------------------------------------------
+TOTAL                                                               2322
+

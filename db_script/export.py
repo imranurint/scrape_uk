@@ -10,6 +10,8 @@ import os
 import re
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config.database import AsyncSessionLocal
 from models.db import Course, University
